@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>HOME</title>
+</head>
+<body>
+<p>新的页面</p>
+<form method="get" action="<%=luci.dispatcher.build_url("set", "hostname")%>">
+<input type="text" name="hostname">
+<button id="submit">提交</button>
+</form>
+</body>
+</html>

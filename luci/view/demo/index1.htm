@@ -1,4 +1,20 @@
-﻿<html data-n-head-ssr>
+﻿<%
+require "luci.fs"
+<!--local has_ipv6 = luci.fs.access("/proc/net/ipv6_route")-->
+<!--local has_dhcp = luci.fs.access("/etc/config/dhcp")-->
+<!--local has_wifi = luci.fs.stat("/etc/config/wireless")-->
+<!--has_wifi = has_wifi and has_wifi.size > 0-->
+<!--local _, _, memtotal, memcached, membuffers, memfree, _, swaptotal, swapcached, swapfree = luci.sys.sysinfo()-->
+<!--local has_swap-->
+<!--if swaptotal > 0 then-->
+<!--has_swap = 1-->
+<!--end-->
+<!--local has_dsl = luci.fs.stat("/etc/init.d/dsl_control")-->
+
+local system, model = luci.sys.sysinfo()
+local msg="ceshui"
+-%>
+<html data-n-head-ssr>
 <head>
     <title>keyan</title>
     <meta data-n-head="ssr" charset="utf-8">
@@ -113,6 +129,13 @@
             <td><%=pcdata(model or "?")%></td>
         </tr>
         <tr class="cbi-section-table-row">
+            <td><%:Firmware Version%></td>
+            <td>
+                <%=pcdata(luci.version.distname)%> <%=pcdata(luci.version.distversion)%> /
+                <%=pcdata(luci.version.luciname)%> (<%=pcdata(luci.version.luciversion)%>)
+            </td>
+        </tr>
+        <tr class="cbi-section-table-row">
             <td><%:Kernel Version%></td>
             <td><%=luci.sys.exec("uname -r")%></td>
         </tr>
@@ -198,13 +221,6 @@ local dsp = require "luci.dispatcher"
             }
         }
     );
-
-    stxhr.get('<%=dsp.build_url("admin/demo/demo1/test")%>', null,
-        function (x, info) {
-            console.log("test", info)
-        }
-    );
-
 </script>
 
 </body>

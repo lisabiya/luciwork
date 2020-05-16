@@ -1,4 +1,9 @@
-﻿<html data-n-head-ssr>
+﻿<%-
+function luaPrint(name, pass)
+return name.."**"..pass
+end
+-%>
+<html data-n-head-ssr>
 <head>
     <title>keyan</title>
     <meta data-n-head="ssr" charset="utf-8">
@@ -44,7 +49,7 @@
         border: 1px solid #3b8070;
         color: #3b8070;
         text-decoration: none;
-        margin: 20px;
+        margin: 20px 10px;
         padding: 10px 30px
     }
 
@@ -52,6 +57,7 @@
         color: #fff;
         background-color: #3b8070
     }
+
 
     .divStyle {
         background: #eeeeee;
@@ -94,15 +100,39 @@
 </head>
 <body>
 <div class="main" data-v-42a6d4b0>
-    <h1 data-v-42a6d4b0>功能页面</h1>
+    <h1 data-v-42a6d4b0>功能页面 <%=luaPrint('win','wakfu')%></h1>
 </div>
 
 <div class="divStyle">
-    <input type="button" value="<%:wifi%>" class="button--green"/>
+    <dl>
+        <dd>
+            <input id="wifiID1" type="button" onclick="test()" value="Test"
+                   class="button--green"/>
+            <input id="wifiID2" type="button" onclick="testSocket()" value="TestSocket"
+                   class="button--green"/>
+            <input id="wifiID3" type="button" onclick="getWifiList()" value="getWifiList"
+                   class="button--green"/>
+            <input id="wifiID4" type="button" onclick="getJson()" value="getJson"
+                   class="button--green"/>
+        </dd>
+        <dd>
+            <input id="system1" type="button" onclick="systemRouter('info')" value="systemInfo"
+                   class="button--green"/>
+
+            <input id="system2" type="button"
+                   onclick="location.href='<%=build_url('admin/demo/demo1/game')%>'"
+                   value="前往首页"
+                   class="button--green"/>
+        </dd>
+    </dl>
+    <dl>
+
+
+    </dl>
 </div>
+
 <fieldset class="cbi-section">
     <legend><%:System%></legend>
-
     <table class="cbi-section-table">
         <tr class="cbi-section-table-row">
             <td><%:Hostname%></td>
@@ -126,6 +156,23 @@
         </tr>
     </table>
 </fieldset>
+
+<fieldset class="cbi-section" style="display:none">
+    <legend><%:DHCPv4 Leases%></legend>
+
+    <table class="cbi-section-table" id="lease_status_table">
+        <tr class="cbi-section-table-titles">
+            <th class="cbi-section-table-cell"><%:Hostname%></th>
+            <th class="cbi-section-table-cell"><%:IPv4-Address%></th>
+            <th class="cbi-section-table-cell"><%:MacAddr%></th>
+            <th class="cbi-section-table-cell"><%:Leasetime remaining%></th>
+        </tr>
+        <tr class="cbi-section-table-row">
+            <td colspan="4"><em><br/><%:Collecting data...%></em></td>
+        </tr>
+    </table>
+</fieldset>
+
 
 <fieldset class="cbi-section" style="display:none">
     <legend><%:DHCPv6 Leases%></legend>
@@ -152,19 +199,46 @@
     routePath: "/"
 }</script>
 
-<%-
-local dsp = require "luci.dispatcher"
--%>
-
-
-<script type="text/javascript" src="<%=resource%>/xhr.js"></script>
+<script type="text/javascript" src="/luci-static/resources/xhr.js"></script>
 <script type="text/javascript">
-    var stxhr = new XHR();
-    stxhr.get('<%=dsp.build_url("admin/demo/demo1/readDemo")%>', {status: 1},
+    XHR.get('<%=build_url("admin/demo/demo1/readDemo")%>', {status: 1},
         function (x, info) {
-            console.log(info)
-            var ss = JSON.stringify(info)
-            console.log(ss)
+            console.log(info);
+            var ss = JSON.stringify(info);
+            console.log(ss);
+
+            var ls = document.getElementById('lease_status_table');
+            if (ls && info.leases) {
+                ls.parentNode.style.display = 'block';
+                /* clear all rows */
+                while (ls.rows.length > 1)
+                    ls.rows[0].parentNode.deleteRow(1);
+                for (var i = 0; i < info.leases.length; i++) {
+                    var timestr;
+
+                    if (info.leases[i].expires <= 0)
+                        timestr = '<em><%:expired%></em>';
+                    else
+                        timestr = info.leases[i].expires;
+
+                    var tr = ls.rows[0].parentNode.insertRow(-1);
+                    tr.className = 'cbi-section-table-row cbi-rowstyle-' + ((i % 2) + 1);
+
+                    tr.insertCell(-1).innerHTML = info.leases[i].hostname ? info.leases[i].hostname : '?';
+                    tr.insertCell(-1).innerHTML = info.leases[i].ipaddr;
+                    tr.insertCell(-1).innerHTML = info.leases[i].macaddr;
+                    tr.insertCell(-1).innerHTML = timestr;
+                }
+                if (ls.rows.length === 1) {
+                    var tr = ls.rows[0].parentNode.insertRow(-1);
+                    tr.className = 'cbi-section-table-row';
+
+                    var td = tr.insertCell(-1);
+                    td.colSpan = 4;
+                    td.innerHTML = '<em><br /><%:There are no active leases.%></em>';
+                }
+            }
+
             var ls6 = document.getElementById('lease6_status_table');
             if (ls6 && info.leases6) {
                 ls6.parentNode.style.display = 'block';
@@ -199,13 +273,50 @@ local dsp = require "luci.dispatcher"
         }
     );
 
-    stxhr.get('<%=dsp.build_url("admin/demo/demo1/test")%>', null,
-        function (x, info) {
-            console.log("test", info)
-        }
-    );
+    function test() {
+        XHR.get('<%=build_url("admin/demo/demo1/test")%>', {status: 10086},
+            function (x, info) {
+                console.log("test1", info)
+            }
+        )
+    }
+
+    function testSocket() {
+        XHR.get('<%=build_url("admin/demo/demo1/testSocket")%>', null,
+            function (x, info) {
+                console.log("testSocket", {response: x.response, responseTxt: x.responseTxt})
+            }
+        )
+    }
+
+    function getWifiList() {
+        XHR.get('<%=build_url("admin/demo/demo1/getWifiList")%>', null,
+            function (x, info) {
+                console.log("getWifiList", info);
+            }
+        )
+
+    }
+
+    function getJson() {
+        XHR.get('<%=build_url("admin/demo/demo1/getJson")%>', null,
+            function (x, info) {
+                console.log("getWifiList", info)
+            }
+        )
+    }
+
+    function systemRouter(router, mapValue) {
+        XHR.get('<%=build_url("admin/demo/demo1/systemRouter")%>', {
+                router: router,
+                mapValue: mapValue
+            },
+            function (x, info) {
+                console.log("systemRouter", info)
+            }
+        )
+    }
 
 </script>
-
 </body>
 </html>

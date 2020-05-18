@@ -1,9 +1,4 @@
-﻿<%-
-function luaPrint(name, pass)
-return name.."**"..pass
-end
--%>
-<html data-n-head-ssr>
+﻿<html data-n-head-ssr>
 <head>
     <title>keyan</title>
     <meta data-n-head="ssr" charset="utf-8">
@@ -100,7 +95,7 @@ end
 </head>
 <body>
 <div class="main" data-v-42a6d4b0>
-    <h1 data-v-42a6d4b0>功能页面 <%=luaPrint('win','wakfu')%></h1>
+    <h1 data-v-42a6d4b0>功能页面</h1>
 </div>
 
 <div class="divStyle">
@@ -118,44 +113,54 @@ end
         <dd>
             <input id="system1" type="button" onclick="systemRouter('info')" value="systemInfo"
                    class="button--green"/>
-
             <input id="system2" type="button"
                    onclick="location.href='<%=build_url('admin/demo/demo1/game')%>'"
                    value="前往首页"
                    class="button--green"/>
         </dd>
     </dl>
-    <dl>
 
-
-    </dl>
 </div>
 
-<fieldset class="cbi-section">
-    <legend><%:System%></legend>
-    <table class="cbi-section-table">
-        <tr class="cbi-section-table-row">
-            <td><%:Hostname%></td>
-            <td><%=luci.sys.hostname() or "?"%></td>
-        </tr>
-        <tr class="cbi-section-table-row">
-            <td><%:Model%></td>
-            <td><%=pcdata(model or "?")%></td>
-        </tr>
-        <tr class="cbi-section-table-row">
-            <td><%:Kernel Version%></td>
-            <td><%=luci.sys.exec("uname -r")%></td>
-        </tr>
-        <tr class="cbi-section-table-row">
-            <td><%:系统信息%></td>
-            <td id="system"><%=system%>/<%=model%></td>
-        </tr>
-        <tr class="cbi-section-table-row">
-            <td><%:全部信息%></td>
-            <td id="allInfo"><%=luci.http.formvalue("wan")%>/<%=msg%>/<%=type(rv)%>/<%=status%></td>
-        </tr>
-    </table>
-</fieldset>
+<div class="divStyle">
+    <fieldset class="cbi-section">
+        <div class="cbi-value">
+            <label class="cbi-value-title">设备ip</label>
+            <div class="cbi-value-field">
+                <input id="client" class="text" type="text" value="ss"/>
+            </div>
+        </div>
+        <div class="cbi-value">
+            <label class="cbi-value-title">代理地址</label>
+            <div class="cbi-value-field">
+                <input id="proxyServer" class="text" type="text"/>
+            </div>
+        </div>
+        <div class="cbi-value">
+            <label class="cbi-value-title">代理端口</label>
+            <div class="cbi-value-field">
+                <input id="localPort" class="text" type="text"/>
+            </div>
+        </div>
+        <div class="cbi-value">
+            <label class="cbi-value-title">账户名</label>
+            <div class="cbi-value-field">
+                <input id="user" class="text" type="text"/>
+            </div>
+        </div>
+        <div class="cbi-value cbi-value-last">
+            <label class="cbi-value-title">密码</label>
+            <div class="cbi-value-field">
+                <input id="password" class="text" type="password"/>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px">
+            <input type="button" onclick="applyIni()" value="提交"
+                   class="cbi-button cbi-button-apply"/>
+        </div>
+    </fieldset>
+</div>
 
 <fieldset class="cbi-section" style="display:none">
     <legend><%:DHCPv4 Leases%></legend>
@@ -172,8 +177,6 @@ end
         </tr>
     </table>
 </fieldset>
-
-
 <fieldset class="cbi-section" style="display:none">
     <legend><%:DHCPv6 Leases%></legend>
 
@@ -295,7 +298,6 @@ end
                 console.log("getWifiList", info);
             }
         )
-
     }
 
     function getJson() {
@@ -316,6 +318,23 @@ end
             }
         )
     }
+
+    function applyIni() {
+        var client = document.getElementById('client');
+        var proxyServer = document.getElementById('proxyServer');
+        var localPort = document.getElementById('localPort');
+        var user = document.getElementById('user');
+        var password = document.getElementById('password');
+
+        systemRouter('ini', JSON.stringify({
+            client: client.value,
+            proxyServer: proxyServer.value,
+            localPort: localPort.value,
+            user: user.value,
+            password: password.value,
+        }));
+    }
+
 
 </script>
 </body>

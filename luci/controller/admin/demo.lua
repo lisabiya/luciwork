@@ -4,6 +4,7 @@ require "luci.tools.status"
 function index()
     entry({ "admin", "demo" }, firstchild(), "Demo", 60).dependent = false
     entry({ "admin", "demo", "demo1" }, template("demo/index"), "demo1", 2)
+    entry({ "admin", "demo", "proxy" }, template("demo/proxy"), "proxy", 10)
 
     entry({ "admin", "demo", "demo1", "game" }, call("goGame"), "demo1", 3)
 
@@ -109,15 +110,61 @@ function getWifiList()
 end
 
 function readIni()
+    local json = require "luci.json"
+    local mapValue = luci.http.formvalue("mapValue")
+    local params, err = json.decode(mapValue)
+    if params == nil then
+        luci.http.prepare_content("application/json")
+        luci.http.write_json({ code = 500, result = "参数格式不正确" })
+        return
+    end
+    local client = params.client
+    local localPort = params.localPort
+    local proxyServer = params.proxyServer
+    local user = params.user
+    local password = params.password
+
     local ini = require 'luci.tools.ini'
-    local inifile = require 'luci.tools.inifile'
+    local configFile = "/etc/lxconfig.ini"
 
-    settings1 = ini.parse_file("/usr/app.ini")
-    settings2 = inifile.parse("/usr/app.ini")
+    local settings = ini.parse_file(configFile)
+    if settings then
+        --查找最大值
+        maxIndex = 0
+        for k, v in pairs(settings) do
+            local index = k:match("^CLENT(%d+)$")
+            index = tonumber(index)
 
+            if index > maxIndex then
+                maxIndex = index
+            end
+        end
+        maxIndex = maxIndex + 1
+        --添加新数据
+        key = "CLENT" .. tostring(maxIndex)
+        settings[key] = {
+            clent = client,
+            localport = localPort,
+            proxyserver = proxyServer,
+            user = user,
+            passwd = password
+        }
+    else
+        settings = {
+            CLENT0 = {
+                clent = client,
+                localport = localPort,
+                proxyserver = proxyServer,
+                user = user,
+                passwd = password
+            }
+        }
+    end
+
+    local state = ini.save(configFile, settings);
     --返回值
     luci.http.prepare_content("application/json")
-    luci.http.write_json({ settings1 = settings1, settings2 = settings2 })
+    luci.http.write_json({ settings = settings, result = state })
 end
 
 function ping()
@@ -164,9 +211,9 @@ function getJson()
     local fs = require "nixio.fs"
     local json = require "luci.json"
 
-    jsonFile = "/usr/me.json"
+    local jsonFile = "/usr/me.json"
     --写数据
-    data = {
+    local data = {
         user = "wakfu",
         password = "kanw",
         tesrt = "&[ss]"
@@ -189,18 +236,90 @@ function systemRouter()
     router = luci.http.formvalue("router")
     RouterF = {
         info = getSystemInfo,
+        ini = readIni
     }
     RouterF[router]()
 end
 
 function getSystemInfo()
     arp_table = {}
+    leases = luci.tools.status.dhcp_leases()
+
     luci.sys.net.arptable(function(e)
-        arp_table[#arp_table + 1] = e
+        childTable = {
+            macAddr = e["HW address"],
+            device = e.Device,
+            connectStatus = e.Flags ~= "0x0",
+            hostname = "",
+            ipAddr = "",
+        }
+        for _, v in pairs(leases) do
+            if v["macaddr"] == childTable.macAddr then
+                childTable.hostname = v["hostname"]
+                childTable.ipAddr = v["ipaddr"]
+            end
+        end
+        arp_table[#arp_table + 1] = childTable
     end)
+
+    --
+    local netm = require "luci.model.network"
+    netm.init()
+    local rv = { }
+    ifaces = "lan,wan"
+    for iface in ifaces:gmatch("[%w%.%-_]+") do
+        local net = netm:get_network(iface)
+        local device = net and net:get_interface()
+
+        local data = {
+            net = net,
+            proto = net:proto(),
+            uptime = net:uptime(),
+            gwaddr = net:gwaddr(),
+            dnsaddrs = net:dnsaddrs(),
+            device = device,
+            deviceType = device:type(),
+            ipAddress = { },
+            ip6Address = { },
+            subDevices = { }
+        }
+
+        for _, a in ipairs(device:ipaddrs()) do
+            data.ipAddress[#data.ipAddress + 1] = {
+                addr = a:host():string(),
+                netmask = a:mask():string(),
+                prefix = a:prefix()
+            }
+        end
+        for _, a in ipairs(device:ip6addrs()) do
+            if not a:is6linklocal() then
+                data.ip6Address[#data.ip6Address + 1] = {
+                    addr = a:host():string(),
+                    netmask = a:mask():string(),
+                    prefix = a:prefix()
+                }
+            end
+        end
+        for _, device in ipairs(net:get_interfaces() or {}) do
+            data.subDevices[#data.subDevices + 1] = {
+                name = device:shortname(),
+                type = device:type(),
+                ifname = device:name(),
+                macaddr = device:mac(),
+                macaddr = device:mac(),
+                is_up = device:is_up(),
+                rx_bytes = device:rx_bytes(),
+                tx_bytes = device:tx_bytes(),
+                rx_packets = device:rx_packets(),
+                tx_packets = device:tx_packets(),
+            }
+        end
+        rv[#rv + 1] = data
+    end
+
     --返回值
     luci.http.prepare_content("application/json")
-    luci.http.write_json({ code = 200, arp_table = arp_table })
+    luci.http.write_json({ code = 200, arp_table = arp_table, leases = leases, device = rv })
 end
 
 function goGame()

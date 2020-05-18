@@ -1,0 +1,159 @@
+﻿<html data-n-head-ssr>
+<head>
+    <title>keyan</title>
+    <meta data-n-head="ssr" charset="utf-8">
+    <meta data-n-head="ssr" name="viewport" content="width=device-width,initial-scale=1">
+    <meta data-n-head="ssr" data-hid="description" name="description"
+          content="My wicked Nuxt.js project">
+    <link data-n-head="ssr" rel="icon" type="image/x-icon" href="/favicon.ico">
+    <base href="/">
+    <link rel="stylesheet" href="/luci-static/bootstrap/cascade.css">
+    <style>
+        .button--green {
+            width: 80%;
+            display: inline-block;
+            border-radius: 4px;
+            border: 1px solid #3b8070;
+            color: #3b8070;
+            text-decoration: none;
+            margin: 20px 10px;
+            padding: 10px 30px
+        }
+
+        .button--green:hover {
+            color: #fff;
+            background-color: #3b8070
+        }
+
+        .divStyle {
+            background: #eeeeee;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+<div style="background: #3b8070;display: flex;alignment: center;justify-content: center">
+    <h1 style="color: whitesmoke">代理</h1>
+</div>
+<fieldset class="cbi-section" style="display:none">
+    <legend><%:DHCPv4 Leases%></legend>
+
+    <table class="cbi-section-table" id="lease_status_table">
+        <tr class="cbi-section-table-titles">
+            <th class="cbi-section-table-cell"><%:Hostname%></th>
+            <th class="cbi-section-table-cell"><%:IPv4-Address%></th>
+            <th class="cbi-section-table-cell"><%:MacAddr%></th>
+            <th class="cbi-section-table-cell"><%:ConnectStatus%></th>
+        </tr>
+        <tr class="cbi-section-table-row">
+            <td colspan="4"><em><br/><%:Collecting data...%></em></td>
+        </tr>
+    </table>
+</fieldset>
+
+<div class="divStyle">
+    <fieldset class="cbi-section">
+        <div class="cbi-value">
+            <label class="cbi-value-title">设备ip</label>
+            <div class="cbi-value-field">
+                <input id="client" class="text" type="text" value="ss"/>
+            </div>
+        </div>
+        <div class="cbi-value">
+            <label class="cbi-value-title">代理地址</label>
+            <div class="cbi-value-field">
+                <input id="proxyServer" class="text" type="text"/>
+            </div>
+        </div>
+        <div class="cbi-value">
+            <label class="cbi-value-title">代理端口</label>
+            <div class="cbi-value-field">
+                <input id="localPort" class="text" type="text"/>
+            </div>
+        </div>
+        <div class="cbi-value">
+            <label class="cbi-value-title">账户名</label>
+            <div class="cbi-value-field">
+                <input id="user" class="text" type="text"/>
+            </div>
+        </div>
+        <div class="cbi-value cbi-value-last">
+            <label class="cbi-value-title">密码</label>
+            <div class="cbi-value-field">
+                <input id="password" class="text" type="password"/>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px">
+            <input type="button" onclick="applyIni()" value="提交"
+                   class="cbi-button cbi-button-apply"/>
+        </div>
+    </fieldset>
+</div>
+
+<script type="text/javascript" src="/luci-static/resources/xhr.js"></script>
+<script type="text/javascript">
+    baseurl = "<%=build_url('')%>"
+</script>
+
+<script type="text/javascript">
+    proxyRouter("deviceList", null, function (x, info) {
+        console.log(info);
+        const ls = document.getElementById('lease_status_table');
+        if (ls && info.deviceList) {
+            ls.parentNode.style.display = 'block';
+            /* clear all rows */
+            while (ls.rows.length > 1)
+                ls.rows[0].parentNode.deleteRow(1);
+            for (let i = 0; i < info.deviceList.length; i++) {
+                var tr = ls.rows[0].parentNode.insertRow(-1);
+                tr.className = 'cbi-section-table-row cbi-rowstyle-' + ((i % 2) + 1);
+
+                tr.insertCell(-1).innerHTML = info.deviceList[i].hostname ? info.deviceList[i].hostname : '?';
+                tr.insertCell(-1).innerHTML = info.deviceList[i].ipAddr;
+                tr.insertCell(-1).innerHTML = info.deviceList[i].macAddr;
+                tr.insertCell(-1).innerHTML = info.deviceList[i].connectStatus;
+            }
+            if (ls.rows.length === 1) {
+                var tr = ls.rows[0].parentNode.insertRow(-1);
+                tr.className = 'cbi-section-table-row';
+
+                var td = tr.insertCell(-1);
+                td.colSpan = 4;
+                td.innerHTML = '<em><br /><%:There are no active leases.%></em>';
+            }
+        }
+    });
+
+    function applyIni() {
+        var client = document.getElementById('client');
+        var proxyServer = document.getElementById('proxyServer');
+        var localPort = document.getElementById('localPort');
+        var user = document.getElementById('user');
+        var password = document.getElementById('password');
+
+        proxyRouter('ini', JSON.stringify({
+            client: client.value,
+            proxyServer: proxyServer.value,
+            localPort: localPort.value,
+            user: user.value,
+            password: password.value,
+        }));
+    }
+
+    function proxyRouter(router, mapValue, callback) {
+        if (callback == null) {
+            callback = function (x, info) {
+                console.log("callBackInfo", info)
+            }
+        }
+        XHR.get(baseurl + "/admin/demo/proxy/proxyRouter", {
+            router: router,
+            mapValue: mapValue
+        }, callback)
+    }
+
+</script>
+</body>
+</html>

@@ -77,7 +77,7 @@ ini.parse = function(data)
 end
 
 ini.parse_file = function(filename)
-    local f = assert(io.open(filename, "r"))
+    local f = assert(io.open(filename, "w"))
     local t = ini.parse(f:read('*all'))
     f:close()
     return t

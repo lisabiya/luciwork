@@ -33,7 +33,7 @@
     </style>
 </head>
 <body>
-<div style="background: #3b8070;display: flex;alignment: center;justify-content: center">
+<div style="background: #3b8070;display: flex;alignment: center;justify-content: center;padding: 12px">
     <h1 style="color: whitesmoke">代理</h1>
 </div>
 <fieldset class="cbi-section" style="display:none">
@@ -57,31 +57,31 @@
         <div class="cbi-value">
             <label class="cbi-value-title">设备ip</label>
             <div class="cbi-value-field">
-                <input id="client" class="text" type="text" value="ss"/>
+                <input id="client" class="text" type="text" value="192.168.1.239"/>
             </div>
         </div>
         <div class="cbi-value">
             <label class="cbi-value-title">代理地址</label>
             <div class="cbi-value-field">
-                <input id="proxyServer" class="text" type="text"/>
+                <input id="proxyServer" class="text" type="text" value="44.12.36.136"/>
             </div>
         </div>
         <div class="cbi-value">
             <label class="cbi-value-title">代理端口</label>
             <div class="cbi-value-field">
-                <input id="localPort" class="text" type="text"/>
+                <input id="localPort" class="text" type="text" value="8099"/>
             </div>
         </div>
         <div class="cbi-value">
             <label class="cbi-value-title">账户名</label>
             <div class="cbi-value-field">
-                <input id="user" class="text" type="text"/>
+                <input id="user" class="text" type="text" value="userAccount"/>
             </div>
         </div>
         <div class="cbi-value cbi-value-last">
             <label class="cbi-value-title">密码</label>
             <div class="cbi-value-field">
-                <input id="password" class="text" type="password"/>
+                <input id="password" class="text" type="password" value="123456"/>
             </div>
         </div>
 
@@ -90,6 +90,10 @@
                    class="cbi-button cbi-button-apply"/>
         </div>
     </fieldset>
+</div>
+<div class="divStyle">
+    <input id="json" type="button" onclick="getJson()" value="获取状态"
+           class="button--green"/>
 </div>
 
 <script type="text/javascript" src="/luci-static/resources/xhr.js"></script>
@@ -100,6 +104,9 @@
 <script type="text/javascript">
     proxyRouter("deviceList", null, function (x, info) {
         console.log(info);
+        const jsonInfo = JSON.stringify(info);
+        console.log("callBackInfoJson", jsonInfo);
+
         const ls = document.getElementById('lease_status_table');
         if (ls && info.deviceList) {
             ls.parentNode.style.display = 'block';
@@ -142,10 +149,17 @@
         }));
     }
 
+    function getJson() {
+        const client = document.getElementById('client');
+        proxyRouter('json', JSON.stringify({client: client.value}));
+    }
+
     function proxyRouter(router, mapValue, callback) {
         if (callback == null) {
             callback = function (x, info) {
-                console.log("callBackInfo", info)
+                console.log("callBackInfo", info);
+                const jsonInfo = JSON.stringify(info);
+                console.log("callBackInfoJson", jsonInfo)
             }
         }
         XHR.get(baseurl + "/admin/demo/proxy/proxyRouter", {

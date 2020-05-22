@@ -23,6 +23,19 @@ function file_exists(path)
     return file ~= nil
 end
 
+local statusMap = {
+    [-3] = "设备连接状态文件不存在",
+    [-2] = "设备连接状态文件数据格式错误",
+    [-1] = "未知错误",
+    [0] = "成功",
+    [1] = "连接服务器错误",
+    [2] = "获取加速文件错误",
+    [3] = "解析加速文件错误",
+    [4] = "连接中",
+    [5] = "连接中",
+    [6] = "连接中",
+}
+
 ---读取设备连接状态
 ---@param ip file | string  设备ip地址
 ---@return table | nil  {time: "2020-05-21 07:50:23", status: 0}
@@ -36,9 +49,15 @@ function readDeviceStatus(ip)
         else
             return nil
         end
-        return json.decode(data or "")
+        response = json.decode(data or "")
+        if response then
+            response["msg"] = statusMap[response.status]
+        else
+            response = { msg = statusMap[-2], status = -2 }
+        end
+        return response
     else
-        return nil
+        return { msg = statusMap[-3], status = -3 }
     end
 end
 
@@ -49,8 +68,12 @@ function readSetting()
         settings = ini.parse_file(configFile)
         if settings == nil or settings["CLENT0"] == nil or settings["CLENT1"] == nil then
             return {
-                CLENT0 = {},
-                CLENT1 = {}
+                CLENT0 = {
+                    localport = 65431
+                },
+                CLENT1 = {
+                    localport = 65432
+                }
             }
         end
         return settings
@@ -162,9 +185,6 @@ end
 --请求关闭代理
 local function stopProxy()
     local client = params.client
-    local proxyServer = params.proxyServer
-    local user = params.user
-    local password = params.password
 
     local settings = readSetting()
     local createIndex = -1
@@ -189,9 +209,9 @@ local function stopProxy()
 
     key = "CLENT" .. createIndex
     settings[key]["clent"] = "''"
-    settings[key]["proxyserver"] = proxyServer
-    settings[key]["user"] = user
-    settings[key]["passwd"] = password
+    settings[key]["proxyserver"] = "''"
+    settings[key]["user"] = "''"
+    settings[key]["passwd"] = "''"
 
     local state = ini.save(configFile, settings);
     if state then
@@ -232,8 +252,7 @@ local function getDeviceList()
         if settings then
             for _, setting in pairs(settings) do
                 if setting.clent == v.ipAddr then
-                    local status = readDeviceStatus(v.ipAddr)
-                    v.status = status or { msg = "设备连接状态文件不存在", status = -2 };
+                    v.status = readDeviceStatus(v.ipAddr)
                 end
             end
         end
@@ -263,7 +282,7 @@ function getDeviceStatus()
     if status then
         luci.http.write_json({ code = 200, response = status, msg = "解析json成功" })
     else
-        luci.http.write_json({ code = 500, response = { msg = "设备连接状态文件不存在", status = -2 }, msg = "设备连接状态文件不存在" })
+        luci.http.write_json({ code = 500, response = { msg = statusMap[-3], status = -3 }, msg = statusMap[-3] })
     end
 end
 

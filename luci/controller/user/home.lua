@@ -13,138 +13,47 @@ module("luci.controller.user.home", package.seeall)
 
 function index()
     entry({"user","home"}, alias("user", "home", "index"), _("Home"), 20).index = true
-    entry({"user", "home", "home"}, template("user/home"))
     entry({"user", "home", "index"}, template("user/index"))
-    entry({"user", "home", "info"}, call("get_info"))
 
     entry({"user", "home", "wifi"}, template("user/wifi"), _("Wifi"), 2)
     entry({"user", "home", "wifiset"}, call("set_wifi"))
 
---    entry({"user", "home", "gamelist"}, template("user/gamelist"),_("Games"), 3).leaf = true
+--    entry({"user", "home", "gamelist"}, template("user/gamelist"),_("Games"), 3)
     entry({"user", "home", "status"}, template("user/status"), _("Status"), 4)
     entry({"user", "home", "devinfo"}, call("device_info"))
 
-    entry({"user","home","router"},template("user/router"))
     entry({"user","home","arptable"},call("get_arptable"))
 
     entry({"user", "home", "password"}, call("action_passwd"),_("Password"), 5)
 
-    entry({"user", "home", "reset"}, call("action_reset"),_("Restore"), 6).leaf = true
---    entry({"user", "home", "upgrade"}, template("user/upgrade"),_("Upgrade"), 7).leaf = true
+    entry({"user", "home", "reset"}, call("action_reset"),_("Restore"), 6)
+
+    entry({"user", "home", "upgrade"}, call("action_upgrade"),_("Upgrade"), 7)
 
 	entry({"user", "home", "reboot"}, call("action_reboot"),_("Reboot"), 8)
 
-	entry({"user", "home", "test"}, call("wifidevs"),_("Test"), 9)
+	entry({"user", "home", "test"}, call("test"),_("Test"), 9)
 
 end
 
 -- test -----------------------------------------------
 -- fs.exec('/sbin/firstboot', ['-r', '-y'])
 function test()
-	luci.sys.wifi.getiwinfo(arg[1])
+	local data = true
 
 	luci.http.prepare_content("application/json")
 	luci.http.write_json({data=data})
 end
+--   ----------------------------------------------------
 
-function get_info()
-	require "luci.tools.status"
-    require "luci.fs"
-	local ntm = require "luci.model.network".init()
-    local system, model, memtotal, memcached, membuffers, memfree, _, swaptotal, swapcached, swapfree = luci.sys.sysinfo()
-	local wan = ntm:get_wannet()
-    local wdev = ntm:get_wandev()
-    local hostname = luci.sys.hostname()
-
---	local conn_count = tonumber((
---			luci.sys.exec("wc -l /proc/net/nf_conntrack") or
---			luci.sys.exec("wc -l /proc/net/ip_conntrack") or
---			""):match("%d+")) or 0
---	local conn_max = tonumber((
---			luci.sys.exec("sysctl net.nf_conntrack_max") or
---			luci.sys.exec("sysctl net.ipv4.netfilter.ip_conntrack_max") or
---			""):match("%d+")) or 4096
-
-    local rv = {
-		    hostname   = hostname,
-		    system     = system,
-		    model      = model,
-			uptime     = luci.sys.uptime(),
-			localtime  = os.date(),
-			loadavg    = { luci.sys.loadavg() },
---			memtotal   = memtotal,
---			memcached  = memcached,
---			membuffers = membuffers,
---			memfree    = memfree,
---			swaptotal  = swaptotal,
---			swapcached = swapcached,
---			swapfree   = swapfree,
---			connmax    = conn_max,
---			conncount  = conn_count,
-			leases     = luci.tools.status.dhcp_leases(),
---			leases6    = luci.tools.status.dhcp6_leases(),
-			wifinets   = luci.tools.status.wifi_networks()
-	}
-
-	if wan then
-		rv.wan = {
-			ipaddr  = wan:ipaddr(),
-			gwaddr  = wan:gwaddr(),
-			netmask = wan:netmask(),
-			dns     = wan:dnsaddrs(),
---			expires = wan:expires(),
-			uptime  = wan:uptime(),
-			proto   = wan:proto(),
-			ifname  = wan:ifname(),
---			link    = wan:adminlink()
-		}
-	end
-	if wdev then
-		rv.wan.macaddr = wdev.dev.macaddr
-	end
-	luci.http.prepare_content("application/json")
-	luci.http.write_json({ data = rv, status= 200})
+-- 分割字符串
+function split(str,reps)
+    local resultStrList = {}
+    string.gsub(str,'[^'..reps..']+',function ( w )
+        table.insert(resultStrList,w)
+    end)
+    return resultStrList
 end
-
-function wifidevs()
-	local ntm = require "luci.model.network".init()
-    local devices  = ntm:get_wifidevs()
-
-	local netlist = { }
-	local netdevs = { }
-
-	local dev
-	for _, dev in ipairs(devices) do
-		local net
-		for _, net in ipairs(dev:get_wifinets()) do
-			netlist[#netlist+1] = net:id()
-			netdevs[net:id()] = dev:name()
-		end
-	end
-
-	luci.http.prepare_content("application/json")
-	luci.http.write_json({ data = netdevs, status= 200})
-end
-
-function wifi_status()
-	local devs = luci.http.formvalue("devs")
-	local s    = require "luci.tools.status"
-	local rv   = { }
-
-	local dev
-	for dev in devs:gmatch("[%w%.%-]+") do
-		rv[#rv+1] = s.wifi_network(dev)
-	end
-
-	if #rv > 0 then
-		luci.http.prepare_content("application/json")
-		luci.http.write_json(rv)
-		return
-	end
-
-	luci.http.status(404, "No such device")
-end
--- test ---------------------------------------------
 
 -- 设置wifi
 function set_wifi()
@@ -211,6 +120,8 @@ function device_info()
     data.model = model or "?"
 	-- 内核版本
     data.kernel = luci.sys.exec("uname -r") or "?"
+    local v = fs.readfile("/etc/lxversion.sh")
+	data.version = string.match(v,"v[%s](%d+%.%d+%.%d+)")
 	-- mac
     local wdev = ntm:get_wandev()
     data.macaddr = wdev.dev.macaddr or "?"
@@ -434,7 +345,7 @@ end
 -- 重启设备
 function action_reboot()
 	local reboot = luci.http.formvalue("reboot")
-	luci.template.render("user/reboot", {reboot=reboot})
+--	luci.template.render("user/reboot", {reboot=reboot})
 	if reboot then
         fork_exec("sleep 5;reboot")
 	end
@@ -458,30 +369,41 @@ function action_reset()
 --		luci.template.render("user/applyreboot", {
 --			title = luci.i18n.translate("Erasing..."),
 --			msg   = luci.i18n.translate("The system is erasing the configuration partition now and will reboot itself when finished."),
---			addr  = "192.168.1.1"
+--			addr  = "192.168.35.1"
 --		})
 --		fork_exec("killall dropbear uhttpd; sleep 1; mtd -r erase rootfs_data")
 --	end
 end
 
--- 固件升级
+
+-- 系统升级
 function action_upgrade()
-	local upgrade_avail = nixio.fs.access("/lib/upgrade/platform.sh")
-    if not upgrade_avail then
-		local msg = "系统错误，无法升级"
+	local data = {}
+    local version = luci.http.formvalue("version")
+    local image = luci.http.formvalue("image")
+	local upgrade = luci.http.formvalue("upgrade")
+
+    if version then
+		if fs.access("/etc/lxversion.sh") then
+			local v = fs.readfile("/etc/lxversion.sh")
+			data.version = string.match(v,"v[%s](%d+%.%d+%.%d+)")
+		else
+			data.version = "0.0.0"
+		end
 		luci.http.prepare_content("application/json")
-	    luci.http.write_json({ msg = msg, status= 200})
+	    luci.http.write_json({data=data,status=200})
 		return
 	end
 
-	local upgrade = luci.http.formvalue("upgrade")
-    local image = luci.http.formvalue("image")
-    local keep = "" -- or "-n"
+	local upgrade_avail = fs.access("/lib/upgrade/platform.sh")
+    if not upgrade_avail then
+		data.msg = "系统错误，暂时无法升级"
+		luci.http.prepare_content("application/json")
+	    luci.http.write_json({ data = data, status= 200})
+		return
+	end
 
-    local image_tmp  = image or "/tmp/firmware.img"
-    local msg = ""
-    local flag = false
-    local data = { }
+    local image_tmp  = "/tmp/openwrt.bin"
 
     -- 镜像检查
 	local function image_supported()
@@ -499,7 +421,7 @@ function action_upgrade()
 		return (luci.sys.exec("md5sum %q" % image_tmp):match("^([^%s]+)"))
 	end
 
-	-- 固件大小
+	-- 固件占用空间
 	local function storage_size()
 		local size = 0
 		if nixio.fs.access("/proc/mtd") then
@@ -523,48 +445,61 @@ function action_upgrade()
 	end
 
     -- 镜像文件保存
-	local fp
-	luci.http.setfilehandler(
-		function(meta, chunk, eof)
-			if not fp then
-				if meta and meta.name == "image" then
-					fp = io.open(image_tmp, "w")
-				else
-					fp = io.popen(restore_cmd, "w")
-				end
-			end
-			if chunk then
-				fp:write(chunk)
-			end
-			if eof then
-				fp:close()
-			end
-		end
-	)
+--	local fp
+--	luci.http.setfilehandler(
+--		function(meta, chunk, eof)
+--			if not fp then
+--				if meta and meta.name == "image" then
+--					fp = io.open(image_tmp, "w")
+--				else
+--					fp = io.popen(restore_cmd, "w")
+--				end
+--			end
+--			if chunk then
+--				fp:write(chunk)
+--			end
+--			if eof then
+--				fp:close()
+--			end
+--		end
+--	)
 
-    if image_supported() then
-		msg = "true"
-		data.checksum = image_checksum()
-		data.storage  = storage_size()
-		data.size     = nixio.fs.stat(image_tmp).size
-		flag = true
-	else
-		msg = "image error"
+    if image then
+		local api = "http://log.321274.com/api/pub/ky_update"
+	    local vmd5 = ""
+
+	    os.execute("wget -O %s %s"%{"/tmp/ky_update",api})
+	   	if fs.access("/tmp/ky_update") then
+			local v = split(fs.readfile("/tmp/ky_update"),"\n")
+			vmd5,image = v[1], v[2]
+		end
+
+		local download = os.execute("wget -O %s %s"%{image_tmp,image}) == 0
+	    if download and image_supported() then
+			if image_checksum() == vmd5 then
+				data.msg = "success"
+--			    data.checksum = image_checksum()
+--			    data.storage  = storage_size()
+--			    data.size     = nixio.fs.stat(image_tmp).size
+			else
+				data.msg = "升级验证失败，请重试"
+			end
+		else
+			data.msg = "升级下载失败，请重试"
+		end
 	end
-    if flag then
---		luci.template.render("user/applyreboot", {
---			title = luci.i18n.translate("Flashing..."),
---			msg   = luci.i18n.translate("The system is flashing now.<br /> DO NOT POWER OFF THE DEVICE!<br /> Wait a few minutes before you try to reconnect. It might be necessary to renew the address of your computer to reach the device again, depending on your settings."),
---			addr  = "192.168.1.1"
---		})
+
+    if upgrade then
+		local keep = "" -- or "-n"
 		fork_exec("killall dropbear uhttpd; sleep 1; /sbin/sysupgrade %s %q" %{ keep, image_tmp })
 	else
 		luci.http.prepare_content("application/json")
-	    luci.http.write_json({ msg = msg, data=data, status= 200})
+	    luci.http.write_json({data=data, status= 200})
 	end
 end
 
--- 系统备份/升级原始完整流程
+
+-- 系统备份/升级原始完整代码
 function action_flashops()
 	local sys = require "luci.sys"
 	local fs  = require "luci.fs"
@@ -685,7 +620,7 @@ function action_flashops()
 			luci.template.render("user/applyreboot", {
 				title = luci.i18n.translate("Flashing..."),
 				msg   = luci.i18n.translate("The system is flashing now.<br /> DO NOT POWER OFF THE DEVICE!<br /> Wait a few minutes before you try to reconnect. It might be necessary to renew the address of your computer to reach the device again, depending on your settings."),
-				addr  = (#keep > 0) and "192.168.1.1" or nil
+				addr  = (#keep > 0) and "192.168.35.1" or nil
 			})
 			fork_exec("killall dropbear uhttpd; sleep 1; /sbin/sysupgrade %s %q" %{ keep, image_tmp })
 		end

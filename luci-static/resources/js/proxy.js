@@ -10,7 +10,13 @@ function proxyRouter(router, mapValue, callback) {
     XHR.get(baseurl + "proxyRouter", {
         router: router,
         mapValue: mapValue
-    }, callback)
+    }, callback);
+    switch (router) {
+        case "":
+            callback("", {})
+            break
+
+    }
 }
 
 /*******************后端api*********************/
@@ -107,6 +113,9 @@ let intervalFactory;
 function getDeviceList() {
     proxyRouter("deviceList", null, function (x, info) {
         console.log("getDeviceList", info);
+        const jsonInfo = JSON.stringify(info);
+        console.log("callBackInfoJson", jsonInfo)
+
         let item = '';
         let status = '';
         for (let i = 0; i < info.deviceList.length; i++) {
@@ -140,7 +149,6 @@ function getDeviceList() {
         $(".equs .item").on("click", function () {
             that = $(this);
             let isAct = that.hasClass("active");
-            stateLen = $(".active").length;
             that.addClass("isClick").siblings().removeClass("isClick");
             clickState = that.hasClass("isClick");
             if (isAct) {
@@ -149,14 +157,10 @@ function getDeviceList() {
                 $(".no-speedState").hide();
                 $(".speedState").hide();
             } else {
-                if (stateLen >= 5) {
-                    alert("链接设备已达上限，请先断开连接")
-                } else {
-                    $(".success-speedState").hide();
-                    $(".speedState").hide();
-                    $(".no-speedState").show();
-                    that.addClass("noactive").siblings().removeClass("noactive");
-                }
+                $(".success-speedState").hide();
+                $(".speedState").hide();
+                $(".no-speedState").show();
+                that.addClass("noactive").siblings().removeClass("noactive");
             }
         });
     }
@@ -164,6 +168,11 @@ function getDeviceList() {
 
 // 开始加速
 $(".no-speedState").on("click", function () {
+    stateLen = $(".active").length;
+    if (stateLen >= 2) {
+        alert("链接设备已达上限，请先断开连接");
+        return;
+    }
     if (nodes[index] == null) {
         alert("获取用户信息失败");
         return

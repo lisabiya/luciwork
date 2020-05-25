@@ -8,6 +8,7 @@ var isContent = [];
 var that;
 var stateLen = "";
 var clickState;
+var ip = [];
 //全局请求函数
 getList();
 
@@ -46,11 +47,15 @@ function getNode(name) {
 }
 
 // 获取区服列表
-function getList() {
+function getList(device_name) {
+    device_name = "ps4"
     $.ajax({
         url: url + 'get_area_server',
         dataType: "json",
         type: "POST",
+        data: {
+            "device_name": device_name
+        },
         success(res) {
             list = res.data;
             $(".server .show-node").html(list[0].name);
@@ -101,7 +106,7 @@ proxyRouter("deviceList", null, function (x, info) {
             "macAddr": "fc:ab:90:19:ff:d9",
             "hostname": "HONOR_20_PRO-9fe1765dccdb",
             "device": "br-Xan",
-            "connectStatus": false,
+            "connectStatus": true,
             "ipAddr": "192.168.1.239",
             "icon": "&#xe64b;"
         }, {
@@ -120,9 +125,11 @@ proxyRouter("deviceList", null, function (x, info) {
         // 判断设备连接状态
         isContent = i.connectStatus;
         if (isContent) {
-            status = "active";
+            status = "active isClick";
             $(".no-speedState").hide();
             $(".success-speedState").show();
+            ip = i.ipAddr
+            console.log(ip)
         } else {
             status = "";
         }
@@ -145,97 +152,63 @@ proxyRouter("deviceList", null, function (x, info) {
 
 
 // 选择加速设备
-
-$(".equs .item").on("click", function () {
+$(document).on("click", ".equs .item", function () {
     that = $(this);
-    let ip = $(this).attr("ip");
+    ip = $(this).attr("ip");
+    console.log(ip)
     let isAct = that.hasClass("active");
     stateLen = $(".active").length;
     that.addClass("isClick").siblings().removeClass("isClick");
     clickState = that.hasClass("isClick");
     if (isAct) {
-        alert("主机已加速，请勿重复连接！");
+        console.log("主机已加速，请勿重复连接！");
+        $(".success-speedState").show();
+        $(".no-speedState").hide();
+        that.addClass("noactive").siblings().removeClass("noactive");
     } else {
-        if (stateLen >= '2') {
-            alert("链接设备已达上限，请先断开连接")
+        if (stateLen > 1) {
+            console.log("链接设备已达上限，请先断开连接")
+            that.removeClass("isClick");
+            $(".success-speedState").show();
         } else {
             $(".success-speedState").hide();
             $(".no-speedState").show();
             that.addClass("noactive").siblings().removeClass("noactive");
         }
     }
-});
-// 开始加速
-$(".no-speedState").on("click", function () {
-    $(".success-speedState").hide();
-    $(".no-speedState").hide();
-    $(".speedState").show();
-    $(".limit").show();
-    setTimeout(() => {
-        $(".speedState").hide();
-        $(".success-speedState").show();
-        that.removeClass("noactive");
-        that.addClass("active");
-        $(".limit").hide();
-    }, 2500);
-});
+
+    // 开始加速
+    if (clickState) {
+        $(".no-speedState").on("click", function () {
+            $(".success-speedState").hide();
+            $(".no-speedState").hide();
+            $(".speedState").show();
+            $(".limit").show();
+            setTimeout(() => {
+                $(".speedState").hide();
+                $(".success-speedState").show();
+                that.removeClass("noactive");
+                that.addClass("active");
+                that.addClass("isClick");
+                $(".limit").hide();
+            }, 2500);
+        });
+    } else {
+        console.log("请选择游戏设备")
+    }
+})
+
 // 停止加速
 $(".success-speedState").on("click", function () {
     if (clickState) {
         that.removeClass("active");
+        if (stateLen > 1) {
+            that.removeClass("noactive");
+        } else {
+            that.addClass("noactive");
+            $(".success-speedState").hide();
+            $(".no-speedState").show();
+            $(".speedState").hide();
+        }
     }
-    $(".success-speedState").hide();
-    $(".no-speedState").show();
-    $(".speedState").hide();
 });
-
-
-// 	proxyRouter('ini', JSON.stringify({
-// 		client: ip, //设备ip
-// 		proxyServer: nodes[index].proxyIp,//代理地址
-// 		localPort: nodes[index].port,//代理端口号
-// 		user: nodes[index].user,//代理用户名
-// 		password: nodes[index].password,//代理密码
-// 	}), function (x, info) {
-// 		//返回示例
-// 		info = {"response": "获取成功", "code": 200}
-// 		if(info.code == "200"){
-// 			// that.addClass("active").siblings().removeClass("active");
-// 			// $(".success-speedState").hide();
-// 			// $(".no-speedState").hide();
-// 			// $(".speedState").show();
-// 			setTimeout(()=>{
-// 				// $(".speedState").hide();
-// 				// $(".success-speedState").show();
-// 				// $(".link-equ .limit").hide()
-// 			},2500);
-// 			// 查询设备连接状态
-// 			// setInterval(()=>{
-// 			// 	proxyRouter('json', JSON.stringify({
-// 			// 	    client:ip //设备ip
-// 			// 	}), function (x, info) {
-// 			// 	    //返回示例
-// 			// 	    info = {
-// 			// 	        "msg": "解析json成功",
-// 			// 	        "response": {
-// 			// 	            "time": "2020-05-19 10:34:50", //更新时间
-// 			// 	            "status": 1                    //状态
-// 			// 	        },
-// 			// 	        "code": 200
-// 			// 	    }
-// 			// 	console.log(info.code)
-// 			// 	});
-// 			// },3000)
-// 		}
-// 		console.log(info)
-// 	});
-
-//status 状态值
-// -1,/*未知错误*/
-// 0,/*成功*/
-// 1,/*连接服务器错误*/
-// 2,/*获取加速文件错误*/
-// 3,/*解析加速文件错误*/
-// 4, /*连接中*/
-// 5, /*连接中*/
-// 6 /*连接中*/

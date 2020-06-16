@@ -3,10 +3,9 @@
 --- Created by wakfu.
 --- DateTime: 2020/5/25 19:10
 ---
-
+local json = require("json")
 
 function test()
-    local json = require("json")
     local ini2 = require 'ini2'
     local ini3 = require 'ini3'
 
@@ -41,5 +40,37 @@ function test1()
         print(section)
     end
 end
-test()
+function test2()
+    local list = { "we", "as" }
+    local lis2 = list;
+    print(json.encode(lis2))
+    table.insert(list, 1, { m = "" })
+    print(json.encode(list))
+    print(json.encode(lis2))
+end
+
+---@param range number
+function taxRate(range, invest, taxRate)
+    local function rangeCount(newInvest, count)
+        newInvest = (1 + taxRate) * newInvest
+        return newInvest
+    end
+
+    local count = 0;
+    local i = 0;
+    repeat
+        i = i + 1;
+        count = rangeCount(count + invest)
+        print("第" .. i .. "期", count)
+    until i == range
+
+    return count
+end
+
+local year = 1
+print("count:", taxRate(3 * year, 50, 0.1))
+print(3* year * 50)
+--test2()
+--test()
 --test1()
+
